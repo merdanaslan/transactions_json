@@ -46,6 +46,9 @@ const app = async () => {
               const time_from = movement.timestamp;
               const time_to = movement.timestamp + 60; // 1m
 
+              // Add UTC time
+              movement.time = new Date(movement.timestamp * 1000).toUTCString();
+
               // Fetch token information only if token hash is provided
               if (tokenHash) {
                 await axios
@@ -67,7 +70,6 @@ const app = async () => {
                       Math.pow(10, tokenData.decimals);
 
                     // Fetch historical price data for the token
-                    //console.log("fetching price data for token:", tokenHash);
                     const response = await axios.get(
                       `${birdeyeBaseUrl}/defi/history_price`, // old: /public/history_price
                       {
@@ -84,8 +86,6 @@ const app = async () => {
                       }
                     );
 
-                    //console.log("price data response:", response.data);
-
                     // Check if data is present
                     if (
                       response.data &&
@@ -95,11 +95,16 @@ const app = async () => {
                     ) {
                       // Add items array to the movement object
                       movement.price_data = response.data.data.items;
+                      
+                      // Calculate total_worth
+                      const price = response.data.data.items[0].value;
+                      movement.total_worth = movement.amount_decimal * price;
                     } else {
                       console.log(
                         "No price data found for token:",
                         tokenHash
                       );
+                      movement.total_worth = null; // or 0, depending on how you want to handle missing price data
                     }
                   })
                   .catch((error) => {
