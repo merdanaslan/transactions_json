@@ -36,6 +36,8 @@ const app = async () => {
         // Filter and show only days with fees
         const daysWithFees = fees.data.filter(day => day.tx_fees > 0);
 
+        console.log(fees.data);
+        console.log(daysWithFees);
         console.log('Days with transaction fees:');
         daysWithFees.forEach(day => {
             console.log(`${day.time}: ${lamportsToSol(day.tx_fees)} SOL (${day.tx_fees} lamports)`);
