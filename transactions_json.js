@@ -1,4 +1,5 @@
 const axios = require("axios");
+const fs = require("fs");
 require("dotenv").config();
 
 const apikey = process.env.API_KEY;
@@ -15,6 +16,8 @@ const app = async () => {
   try {
     let totalPages = 1;
     let page = 1;
+    let allData = []; // Array to store all transaction data
+
     do {
       await axios
         .get(`${solanafmBaseUrl}/v0/accounts/${walletAddress}/transfers`, {
@@ -103,16 +106,21 @@ const app = async () => {
             }
           }
 
+          // Add processed data to allData array
+          allData = allData.concat(responseData);
+
           console.log(JSON.stringify(responseData, null, 2));
 
           page++;
         })
         .catch((error) => {
-          // Silently handle page fetch errors
           page++;
         });
     } while (page <= totalPages);
-    console.log("Process completed without errors.");
+
+    // Save all data to a JSON file
+    fs.writeFileSync('transactions.json', JSON.stringify(allData, null, 2));
+    console.log("Process completed without errors. Data saved to transactions.json");
   } catch (error) {
     // Silently handle main try-catch errors
   }
