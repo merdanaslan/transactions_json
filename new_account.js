@@ -8,8 +8,8 @@ const tokenPriceApiKey = process.env.TOKEN_PRICE_API_KEY;
 
 const solanafmBaseUrl = "https://api.solana.fm";
 const walletAddress = "5rWgrcKUfVSd3QvkqdMBPT1d7aeAJCsnZGhkLZYuFY2k";
-const epochFromTimestamp = "1730907223";
-const epochToTimestamp = "1733499223";
+const epochFromTimestamp = "1731425623";
+const epochToTimestamp = "1734017623";
 
 const birdeyeBaseUrl = "https://public-api.birdeye.so";
 
@@ -114,57 +114,89 @@ const app = async () => {
 
               movement.time = new Date(movement.timestamp * 1000).toUTCString();
 
-              if (tokenHash) {
+              if (tokenHash && tokenHash !== '') {
                 try {
-                  const tokenResponse = await axios.get(
-                    `${solanafmBaseUrl}/v1/tokens/${tokenHash}`,
-                    {
-                      headers: {
-                        ApiKey: apikey,
-                      },
-                    }
-                  );
-
-                  const tokenData = tokenResponse.data;
-                  movement.tokenInfo = {
-                    symbol: tokenData.tokenList.symbol,
-                    decimals: tokenData.decimals,
-                  };
-                  movement.amount_decimal =
-                    movement.amount / Math.pow(10, tokenData.decimals);
-
-                  try {
-                    const priceResponse = await axios.get(
-                      `${birdeyeBaseUrl}/defi/history_price`,
-                      {
-                        params: {
-                          address: tokenHash,
-                          address_type: "token",
-                          type: "1m",
-                          time_from: time_from,
-                          time_to: time_to,
-                        },
-                        headers: {
-                          "X-API-KEY": tokenPriceApiKey,
-                        },
-                      }
+                    // Add delay to avoid rate limiting
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    console.log(`Fetching token info for: ${tokenHash}`);
+                    
+                    const tokenResponse = await axios.get(
+                        `${solanafmBaseUrl}/v1/tokens/${tokenHash}`,
+                        {
+                            headers: {
+                                ApiKey: apikey,
+                            },
+                        }
                     );
 
-                    if (
-                      priceResponse.data?.data?.items?.length > 0
-                    ) {
-                      movement.price_data = priceResponse.data.data.items;
-                      const price = priceResponse.data.data.items[0].value;
-                      movement.total_worth = movement.amount_decimal * price;
-                    } else {
-                      movement.total_worth = null;
+                    if (tokenResponse.data) {
+                        console.log(`Token data received for ${tokenHash}`);
+                        const tokenData = tokenResponse.data;
+                        
+                        // Initialize tokenInfo even if some data is missing
+                        movement.tokenInfo = {
+                            symbol: tokenData.tokenList?.symbol || 'UNKNOWN',
+                            decimals: tokenData.decimals || 0
+                        };
+                        
+                        // Calculate decimal amount
+                        movement.amount_decimal = movement.amount / Math.pow(10, movement.tokenInfo.decimals);
+
+                        // Only try to get price if it's not an NFT (amount = 1)
+                        if (movement.amount > 1) {
+                            try {
+                                console.log(`Fetching price for token: ${tokenHash}`);
+                                const priceResponse = await axios.get(
+                                    `${birdeyeBaseUrl}/defi/history_price`,
+                                    {
+                                        params: {
+                                            address: tokenHash,
+                                            address_type: "token",
+                                            type: "1m",
+                                            time_from: time_from,
+                                            time_to: time_to,
+                                        },
+                                        headers: {
+                                            "X-API-KEY": tokenPriceApiKey,
+                                        },
+                                    }
+                                );
+
+                                if (priceResponse.data?.data?.items?.length > 0) {
+                                    movement.price_data = priceResponse.data.data.items;
+                                    const price = priceResponse.data.data.items[0].value;
+                                    movement.total_worth = movement.amount_decimal * price;
+                                } else {
+                                    console.log(`No price data found for token: ${tokenHash}`);
+                                    movement.price_data = [];
+                                    movement.total_worth = null;
+                                }
+                            } catch (priceError) {
+                                console.log(`Error fetching price for token: ${tokenHash}`, priceError.message);
+                                movement.price_data = [];
+                                movement.total_worth = null;
+                            }
+                        } else {
+                            console.log(`Token ${tokenHash} appears to be an NFT`);
+                            movement.price_data = [];
+                            movement.total_worth = null;
+                        }
                     }
-                  } catch (priceError) {
-                    movement.total_worth = null;
-                  }
                 } catch (tokenError) {
-                  continue;
+                    console.log(`Error fetching token info for: ${tokenHash}`, tokenError.message);
+                    // Set default values even on error
+                    movement.tokenInfo = { symbol: 'UNKNOWN', decimals: 0 };
+                    movement.amount_decimal = movement.amount;
+                    movement.price_data = [];
+                    movement.total_worth = null;
                 }
+              } else {
+                // Handle system transactions (like pay_tx_fees)
+                movement.tokenInfo = { symbol: '', decimals: 0 };
+                movement.amount_decimal = movement.amount;
+                movement.price_data = [];
+                movement.total_worth = null;
               }
             }
           }

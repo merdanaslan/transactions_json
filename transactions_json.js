@@ -6,9 +6,9 @@ const apikey = process.env.API_KEY;
 const tokenPriceApiKey = process.env.TOKEN_PRICE_API_KEY;
 
 const solanafmBaseUrl = "https://api.solana.fm";
-const walletAddress = "9sanPaycTAq3HeiqUYGebsa3UVhawhAWHNwRzPdcfRn8";
-const epochFromTimestamp = "1709078400";
-const epochToTimestamp = "1711702800";
+const walletAddress = "5rWgrcKUfVSd3QvkqdMBPT1d7aeAJCsnZGhkLZYuFY2k";
+const epochFromTimestamp = "1731425623";
+const epochToTimestamp = "1734017623";
 
 const birdeyeBaseUrl = "https://public-api.birdeye.so";
 
